@@ -1,0 +1,74 @@
+{
+  "SOUND": [
+    {
+      "NAME": "BATTLEBAN",
+      "PATH": "Data/BGM/battleban.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "LAST_MEETING",
+      "PATH": "Data/BGM/last_meeting.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "RESULT_BGM",
+      "PATH": "Data/BGM/result_bgm.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "VIRTUAL",
+      "PATH": "Data/BGM/Virtual_mission.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "BATTLEMEETING_VER_2",
+      "PATH": "Data/BGM/battlemeeting_ver_2.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "NO_NAME",
+      "PATH": "Data/BGM/No_name.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "CHALLENGE_TO_TOMORROW",
+      "PATH": "Data/BGM/challenge_to_tomorrow.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "BATTLEMEETING",
+      "PATH": "Data/BGM/battlemeeting.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "HEART",
+      "PATH": "Data/BGM/Heart_sound.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "DRUM_VOICE",
+      "PATH": "Data/BGM/Drum_Voice.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "RANKING",
+      "PATH": "Data/BGM/Ranking.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "EXPOSION",
+      "PATH": "Data/SE/explosion000.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "HIT",
+      "PATH": "Data/SE/hit000.wav",
+      "LOOP": true
+    },
+    {
+      "NAME": "SHOT",
+      "PATH": "Data/SE/shot000.wav",
+      "LOOP": true
+    }
+  ]
+}

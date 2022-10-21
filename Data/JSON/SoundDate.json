@@ -1,0 +1,16 @@
+{
+  "SOUND": {
+    "MAIN": {
+      "PITCH": 1.0,
+      "VOLUME": 1.0
+    },
+    "BGM": {
+      "PITCH": 1.0,
+      "VOLUME": 1.0
+    },
+    "SE": {
+      "PITCH": 1.0,
+      "VOLUME": 1.0
+    }
+  }
+}
