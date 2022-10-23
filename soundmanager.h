@@ -81,8 +81,8 @@ private:
 	// ƒf[ƒ^î•ñ
 	std::unordered_map<std::string, int, std::less<>> m_dataName;
 	std::unordered_map<int, SData, std::less<>> m_data;
-	float fvol;
-	float frate;
+	float m_volume;
+	float m_frate;
 	bool m_Fade_Ok;
 };
 #endif // !_SOUND_MANAGER_H

@@ -32,8 +32,8 @@ const float UP_DOWN_TRACK = 0.01f;
 //--------------------------------------
 CSoundManager::CSoundManager()
 {
-	fvol = 0.0f;
-	frate = 0.0f;
+	m_volume = 0.0f;
+	m_frate = 0.0f;
 	m_Switch = 0;
 	m_nCount = 0;
 	m_Fade_Ok = false;
@@ -52,8 +52,8 @@ CSoundManager::~CSoundManager()
 //--------------------------------------
 HRESULT CSoundManager::Init(HWND hWnd)
 {
-	fvol = 0.0f;
-	frate = 1.0f;
+	m_volume = 0.0f;
+	m_frate = 1.0f;
 	m_Switch = 0;
 	LoadPath();
 	CSound::Init(hWnd);
@@ -120,14 +120,14 @@ void CSoundManager::SoundVolume()
 {
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_UP))
 	{
-		fvol += UP_DOWN_TRACK;
-		SetVolume(m_type, fvol);
+		m_volume += UP_DOWN_TRACK;
+		SetVolume(m_type, m_volume);
 	}
 
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_DOWN))
 	{
-		fvol -= UP_DOWN_TRACK;
-		SetVolume(m_type, fvol);
+		m_volume -= UP_DOWN_TRACK;
+		SetVolume(m_type, m_volume);
 	}
 
 	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_LEFT))
@@ -148,12 +148,12 @@ void CSoundManager::SoundVolume()
 //--------------------------------------
 void CSoundManager::FadeInSound()
 {
-	if (fvol <= 1.0f &&
+	if (m_volume <= 1.0f &&
 		!m_Fade_Ok &&
 		m_Fadetype == TYPE_IN)
 	{
-		fvol += BAN_BGM;
-		SetVolume(m_type, fvol);
+		m_volume += BAN_BGM;
+		SetVolume(m_type, m_volume);
 	}
 	else
 	{
@@ -170,12 +170,12 @@ void CSoundManager::FadeInSound()
 //--------------------------------------
 void CSoundManager::FadeOutSound()
 {
-	if (fvol >= 0.0f && 
+	if (m_volume >= 0.0f && 
 		!m_Fade_Ok &&
 		m_Fadetype == TYPE_OUT)
 	{
-		fvol -= BAN_BGM;
-		SetVolume(m_type, fvol);
+		m_volume -= BAN_BGM;
+		SetVolume(m_type, m_volume);
 	}
 	else
 	{
@@ -194,23 +194,23 @@ void CSoundManager::ShiftRate()
 {
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_O))
 	{
-		frate += TRACK_PITH;
-		CSound::SetRate(m_type, frate);
+		m_frate += TRACK_PITH;
+		CSound::SetRate(m_type, m_frate);
 
-		if (frate >= MAX_RATE)
+		if (m_frate >= MAX_RATE)
 		{
-			frate = MAX_RATE;
+			m_frate = MAX_RATE;
 		}
 	}
 
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_P))
 	{
-		frate -= TRACK_PITH;
-		CSound::SetRate(m_type, frate);
+		m_frate -= TRACK_PITH;
+		CSound::SetRate(m_type, m_frate);
 
-		if (frate <= -MAX_RATE)
+		if (m_frate <= -MAX_RATE)
 		{
-			frate = -MAX_RATE;
+			m_frate = -MAX_RATE;
 		}
 	}
 }
@@ -264,14 +264,14 @@ void CSoundManager::Load()
 
 	//	data.emplace(inString, soundData);
 
-	//	fvol = Loadfile["SOUND"]["TYPE1"];
-	//	frate = Loadfile["PITCH"];
+	//	m_volume = Loadfile["SOUND"]["TYPE1"];
+	//	m_frate = Loadfile["PITCH"];
 	//	m_type = Loadfile["SOUND_TYPE"];
 	//	m_Switch = Loadfile["SOUND_NUM"];
 
 	//	Select();
 
-	//	CSound::SetRate(m_type, frate);
+	//	CSound::SetRate(m_type, m_frate);
 	//}
 }
 
@@ -282,8 +282,8 @@ void CSoundManager::Save()
 {
 	nlohmann::json Savefile;
 
-	Savefile["VOLUME"] = fvol;
-	Savefile["PITCH"] = frate;
+	Savefile["VOLUME"] = m_volume;
+	Savefile["PITCH"] = m_frate;
 	Savefile["SOUND_TYPE"] = m_type;
 	Savefile["SOUND_NUM"] = m_Switch;
 
@@ -419,7 +419,7 @@ void CSoundManager::Select()
 //--------------------------------------
 void CSoundManager::FadeIn()
 {
-	fvol = 0.0f;
+	m_volume = 0.0f;
 	m_Fadetype = TYPE_IN;
 	m_Fade_Ok = false;
 }
