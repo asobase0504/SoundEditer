@@ -32,8 +32,12 @@ const float UP_DOWN_TRACK = 0.01f;
 //--------------------------------------
 CSoundManager::CSoundManager()
 {
-	fvol = 0.0f;
-	frate = 0.0f;
+	m_pXAudio2 = nullptr;				// XAudio2オブジェクトへのインターフェイス
+	m_pMasteringVoice = nullptr;		// マスターボイス
+	m_apSourceVoice[SOUND_MAX] = {};	// ソースボイス
+	m_apDataAudio[SOUND_MAX] = {};		// オーディオデータ
+	m_aSizeAudio[SOUND_MAX] = {};		// オーディオデータサイズ
+
 	m_Switch = 0;
 	m_nCount = 0;
 	m_Fade_Ok = false;
@@ -47,25 +51,194 @@ CSoundManager::~CSoundManager()
 {
 }
 
+
 //--------------------------------------
-//初期化
+// サウンドの生成
 //--------------------------------------
-HRESULT CSoundManager::Init(HWND hWnd)
+CSound * CSoundManager::SoundCreate(SOUND_TYPE type)
 {
-	fvol = 0.0f;
-	frate = 1.0f;
-	m_Switch = 0;
-	LoadPath();
-	CSound::Init(hWnd);
-	return S_OK;
+	if (m_pSound[type] != nullptr)
+	{
+		Init();
+		m_pSound[type] = new CSound;
+		LoadPath();
+		m_pSound[type]->Init();
+	}
+
+	return m_pSound[type];
 }
 
 //--------------------------------------
-//終了
+// マネージャーの生成
 //--------------------------------------
-void CSoundManager::Uninit()
+CSoundManager * CSoundManager::ManagerCreate()
 {
-	CSound::Uninit();
+	CSoundManager* pManager = new CSoundManager;
+
+	if (pManager != nullptr)
+	{
+		pManager->Init();
+	}
+
+	return pManager;
+}
+
+//--------------------------------------
+//初期化
+//--------------------------------------
+HRESULT CSoundManager::Init()
+{
+	m_Switch = 0;		//セレクト時に使用する変数の初期化
+	LoadPath();			//音程の読込
+
+	HRESULT hr;			//HRESULT型の変数
+
+	// COMライブラリの初期化
+	CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
+	// XAudio2オブジェクトの作成
+	hr = XAudio2Create(&m_pXAudio2, 0);
+	if (FAILED(hr))
+	{
+		// COMライブラリの終了処理
+		CoUninitialize();
+
+		// プログラムを緊急で止める
+		assert(false);
+
+		return E_FAIL;
+	}
+
+	// マスターボイスの生成
+	hr = m_pXAudio2->CreateMasteringVoice(&m_pMasteringVoice);
+	if (FAILED(hr))
+	{
+		if (m_pXAudio2)
+		{
+			// XAudio2オブジェクトの開放
+			m_pXAudio2->Release();
+			m_pXAudio2 = nullptr;
+		}
+
+		// COMライブラリの終了処理
+		CoUninitialize();
+
+		// プログラムを緊急で止める
+		assert(false);
+
+		return E_FAIL;
+	}
+
+	CSoundManager* manager = CApplication::GetSoundManager();
+
+	// サウンドデータの初期化
+	for (int nCntSound = 0; nCntSound < SOUND_MAX; nCntSound++)
+	{
+		HANDLE hFile;
+		DWORD dwChunkSize = 0;
+		DWORD dwChunkPosition = 0;
+		DWORD dwFiletype;
+		WAVEFORMATEXTENSIBLE wfx;
+		XAUDIO2_BUFFER buffer;
+
+		// バッファのクリア
+		memset(&wfx, 0, sizeof(WAVEFORMATEXTENSIBLE));
+		memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
+
+		// サウンドデータファイルの生成
+		hFile = CreateFile((LPCSTR)manager->GetPath(nCntSound).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+		if (hFile == INVALID_HANDLE_VALUE)
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+		if (SetFilePointer(hFile, 0, nullptr, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+		{// ファイルポインタを先頭に移動
+			//プログラムを緊急で止める
+			assert(false);
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+
+		// WAVEファイルのチェック
+		hr = CheckChunk(hFile, 'FFIR', &dwChunkSize, &dwChunkPosition);
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+		hr = ReadChunkData(hFile, &dwFiletype, sizeof(DWORD), dwChunkPosition);
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+		if (dwFiletype != 'EVAW')
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+
+		// フォーマットチェック
+		hr = CheckChunk(hFile, ' tmf', &dwChunkSize, &dwChunkPosition);
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+		hr = ReadChunkData(hFile, &wfx, dwChunkSize, dwChunkPosition);
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+
+		// オーディオデータ読み込み
+		hr = CheckChunk(hFile, 'atad', &m_aSizeAudio[nCntSound], &dwChunkPosition);
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+		m_apDataAudio[nCntSound] = (BYTE*)malloc(m_aSizeAudio[nCntSound]);
+		hr = ReadChunkData(hFile, m_apDataAudio[nCntSound], m_aSizeAudio[nCntSound], dwChunkPosition);
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+
+		// ファイルをクローズ
+		CloseHandle(hFile);
+
+		// ソースボイスの生成
+		hr = m_pXAudio2->CreateSourceVoice(&m_apSourceVoice[nCntSound], &(wfx.Format));
+		if (FAILED(hr))
+		{
+			//プログラムを緊急で止める
+			assert(false);
+			return S_FALSE;
+		}
+
+		// バッファの値設定
+		memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
+		buffer.AudioBytes = m_aSizeAudio[nCntSound];
+		buffer.pAudioData = m_apDataAudio[nCntSound];
+		buffer.Flags = XAUDIO2_END_OF_STREAM;
+		buffer.LoopCount = manager->GetLoop(nCntSound);
+
+		// オーディオバッファの登録
+		m_apSourceVoice[nCntSound]->SubmitSourceBuffer(&buffer);
+	}
+
+	return S_OK;
 }
 
 //--------------------------------------
@@ -79,19 +252,90 @@ void CSoundManager::Update()
 	ChangeSound();
 
 	//音量変更
-	SoundVolume();
+	SoundVolume(m_type);
 
 	//サウンドフェードイン
-	FadeInSound();
+	FadeInSound(m_type);
 
 	//サウンドフェードアウト
-	FadeOutSound();
+	FadeOutSound(m_type);
 
 	//ピッチ操作
-	ShiftRate();
+	ShiftRate(m_type);
 
 	//サウンドのパラメーター保存
 	SoundParameter();
+}
+
+//--------------------------------------
+//サウンド再生
+//--------------------------------------
+HRESULT CSoundManager::Play(SOUND_TYPE type)
+{
+	XAUDIO2_VOICE_STATE xa2state;
+	XAUDIO2_BUFFER buffer;
+
+	// バッファの値設定
+	memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
+	buffer.AudioBytes = m_aSizeAudio[type];
+	buffer.pAudioData = m_apDataAudio[type];
+	buffer.Flags = XAUDIO2_END_OF_STREAM;
+	buffer.LoopCount = m_path[type].isLoop;
+
+	// 状態取得
+	m_apSourceVoice[type]->GetState(&xa2state);
+	if (xa2state.BuffersQueued != 0)
+	{// 再生中
+	 // 一時停止
+		m_apSourceVoice[type]->Stop(0);
+
+		// オーディオバッファの削除
+		m_apSourceVoice[type]->FlushSourceBuffers();
+	}
+
+	// オーディオバッファの登録
+	m_apSourceVoice[type]->SubmitSourceBuffer(&buffer);
+
+	// 再生
+	m_apSourceVoice[type]->Start(0);
+
+	return S_OK;
+}
+
+
+//--------------------------------------
+//サウンド停止
+//--------------------------------------
+void CSoundManager::Stop(SOUND_TYPE type)
+{
+	XAUDIO2_VOICE_STATE xa2state;
+
+	// 状態取得
+	m_apSourceVoice[type]->GetState(&xa2state);
+	if (xa2state.BuffersQueued != 0)
+	{// 再生中
+	 // 一時停止
+		m_apSourceVoice[type]->Stop(0);
+
+		// オーディオバッファの削除
+		m_apSourceVoice[type]->FlushSourceBuffers();
+	}
+}
+
+//--------------------------------------
+//全てのサウンド停止
+//--------------------------------------
+void CSoundManager::Stop()
+{
+	// 一時停止
+	for (int nCntSound = 0; nCntSound < SOUND_MAX; nCntSound++)
+	{
+		if (m_apSourceVoice[nCntSound])
+		{
+			// 一時停止
+			m_apSourceVoice[nCntSound]->Stop(0);
+		}
+	}
 }
 
 //--------------------------------------
@@ -116,18 +360,18 @@ void CSoundManager::ChangeSound()
 //--------------------------------------
 //音量管理
 //--------------------------------------
-void CSoundManager::SoundVolume()
+void CSoundManager::SoundVolume(SOUND_TYPE type)
 {
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_UP))
 	{
-		fvol += UP_DOWN_TRACK;
-		SetVolume(m_type, fvol);
+		m_pSound[type]->volUp(UP_DOWN_TRACK);
+		SetVolume(m_type, m_pSound[type]->Getvol());
 	}
 
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_DOWN))
 	{
-		fvol -= UP_DOWN_TRACK;
-		SetVolume(m_type, fvol);
+		m_pSound[type]->volDown(UP_DOWN_TRACK);
+		SetVolume(m_type, m_pSound[type]->Getvol());
 	}
 
 	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_LEFT))
@@ -146,14 +390,14 @@ void CSoundManager::SoundVolume()
 //--------------------------------------
 //サウンドフェードイン
 //--------------------------------------
-void CSoundManager::FadeInSound()
+void CSoundManager::FadeInSound(SOUND_TYPE type)
 {
-	if (fvol <= 1.0f &&
+	if (m_pSound[type]->Getvol() <= 1.0f &&
 		!m_Fade_Ok &&
 		m_Fadetype == TYPE_IN)
 	{
-		fvol += BAN_BGM;
-		SetVolume(m_type, fvol);
+		m_pSound[type]->volUp(BAN_BGM);
+		SetVolume(m_type, m_pSound[type]->Getvol());
 	}
 	else
 	{
@@ -168,14 +412,14 @@ void CSoundManager::FadeInSound()
 //--------------------------------------
 //サウンドフェードアウト
 //--------------------------------------
-void CSoundManager::FadeOutSound()
+void CSoundManager::FadeOutSound(SOUND_TYPE type)
 {
-	if (fvol >= 0.0f && 
+	if (m_pSound[type]->Getvol() >= 0.0f &&
 		!m_Fade_Ok &&
 		m_Fadetype == TYPE_OUT)
 	{
-		fvol -= BAN_BGM;
-		SetVolume(m_type, fvol);
+		m_pSound[type]->volDown(BAN_BGM);
+		SetVolume(m_type, m_pSound[type]->Getvol());
 	}
 	else
 	{
@@ -190,28 +434,18 @@ void CSoundManager::FadeOutSound()
 //--------------------------------------
 //ピッチ操作
 //--------------------------------------
-void CSoundManager::ShiftRate()
+void CSoundManager::ShiftRate(SOUND_TYPE type)
 {
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_O))
 	{
-		frate += TRACK_PITH;
-		CSound::SetRate(m_type, frate);
-
-		if (frate >= MAX_RATE)
-		{
-			frate = MAX_RATE;
-		}
+		m_pSound[type]->PitchUp(TRACK_PITH);
+		SetRate(m_type, m_pSound[type]->Getrate());
 	}
 
 	if (CApplication::GetInput()->GetkeyboardPress(DIK_P))
 	{
-		frate -= TRACK_PITH;
-		CSound::SetRate(m_type, frate);
-
-		if (frate <= -MAX_RATE)
-		{
-			frate = -MAX_RATE;
-		}
+		m_pSound[type]->PitchDown(TRACK_PITH);
+		SetRate(m_type, m_pSound[type]->Getrate());
 	}
 }
 
@@ -320,92 +554,92 @@ void CSoundManager::Select()
 		break;
 
 	case 1:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_BATTLEBAN);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_BATTLEBAN);
 		m_type = SOUND_BGM_BATTLEBAN;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 2:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_LAST_MEETING);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_LAST_MEETING);
 		m_type = SOUND_BGM_LAST_MEETING;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 3:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_RESULT_BGM);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_RESULT_BGM);
 		m_type = SOUND_BGM_RESULT_BGM;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 4:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_VIRTUAL);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_VIRTUAL);
 		m_type = SOUND_BGM_VIRTUAL;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 5:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_BATTLEMEETING_VER_2);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_BATTLEMEETING_VER_2);
 		m_type = SOUND_BGM_BATTLEMEETING_VER_2;
-		SoundVolume();
+		SoundVolume(m_type);
 
 		break;
 
 	case 6:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_NO_NAME);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_NO_NAME);
 		m_type = SOUND_BGM_NO_NAME;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 7:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_CHALLENGE_TO_TOMORROW);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_CHALLENGE_TO_TOMORROW);
 		m_type = SOUND_BGM_CHALLENGE_TO_TOMORROW;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 8:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_BATTLEMEETING);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_BATTLEMEETING);
 		m_type = SOUND_BGM_BATTLEMEETING;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 9:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_HEART);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_HEART);
 		m_type = SOUND_BGM_HEART;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 10:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_DRUM_VOICE);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_DRUM_VOICE);
 		m_type = SOUND_BGM_DRUM_VOICE;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	case 11:
-		FadeIn();
-		CSound::Stop();
-		CSound::Play(SOUND_BGM_RANKING);
+		FadeIn(m_type);
+		CSoundManager::Stop();
+		CSoundManager::Play(SOUND_BGM_RANKING);
 		m_type = SOUND_BGM_RANKING;
-		SoundVolume();
+		SoundVolume(m_type);
 		break;
 
 	default:
@@ -415,20 +649,162 @@ void CSoundManager::Select()
 }
 
 //--------------------------------------
-//サウンドアップ
+// フェードイン
 //--------------------------------------
-void CSoundManager::FadeIn()
+void CSoundManager::FadeIn(SOUND_TYPE type)
 {
-	fvol = 0.0f;
+	m_pSound[type]->Setvol(0.0f);
 	m_Fadetype = TYPE_IN;
 	m_Fade_Ok = false;
 }
 
 //--------------------------------------
-//サウンドダウン
+// フェードアウト
 //--------------------------------------
-void CSoundManager::FadeOut()
+void CSoundManager::FadeOut(SOUND_TYPE type)
 {
 	m_Fadetype = TYPE_OUT;
 	m_Fade_Ok = false;
+}
+
+//--------------------------------------
+//終了
+//--------------------------------------
+void CSoundManager::Uninit()
+{
+	// 一時停止
+	for (int nCntSound = 0; nCntSound < SOUND_MAX; nCntSound++)
+	{
+		if (m_apSourceVoice[nCntSound])
+		{
+			// 一時停止
+			m_apSourceVoice[nCntSound]->Stop(0);
+
+			// ソースボイスの破棄
+			m_apSourceVoice[nCntSound]->DestroyVoice();
+			m_apSourceVoice[nCntSound] = nullptr;
+
+			// オーディオデータの開放
+			free(m_apDataAudio[nCntSound]);
+			m_apDataAudio[nCntSound] = nullptr;
+		}
+	}
+
+	// マスターボイスの破棄
+	m_pMasteringVoice->DestroyVoice();
+	m_pMasteringVoice = nullptr;
+
+	if (m_pXAudio2)
+	{
+		// XAudio2オブジェクトの開放
+		m_pXAudio2->Release();
+		m_pXAudio2 = nullptr;
+	}
+
+	// COMライブラリの終了処理
+	CoUninitialize();
+}
+
+//--------------------------------------
+//音量設定
+//--------------------------------------
+void CSoundManager::SetVolume(SOUND_TYPE type, float fVolume)
+{
+	m_apSourceVoice[type]->SetVolume(fVolume);
+}
+
+//--------------------------------------
+//ピッチ操作
+//--------------------------------------
+void CSoundManager::SetRate(SOUND_TYPE type, float rate)
+{
+	m_apSourceVoice[type]->SetFrequencyRatio(rate);
+}
+
+//--------------------------------------
+//一塊の確認
+//--------------------------------------
+HRESULT CSoundManager::CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition)
+{
+	HRESULT hr = S_OK;
+	DWORD dwRead;
+	DWORD dwChunkType;
+	DWORD dwChunkDataSize;
+	DWORD dwRIFFDataSize = 0;
+	DWORD dwFileType;
+	DWORD dwBytesRead = 0;
+	DWORD dwOffset = 0;
+
+	if (SetFilePointer(hFile, 0, nullptr, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+	{// ファイルポインタを先頭に移動
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+	while (hr == S_OK)
+	{
+		if (ReadFile(hFile, &dwChunkType, sizeof(DWORD), &dwRead, nullptr) == 0)
+		{// チャンクの読み込み
+			hr = HRESULT_FROM_WIN32(GetLastError());
+		}
+
+		if (ReadFile(hFile, &dwChunkDataSize, sizeof(DWORD), &dwRead, nullptr) == 0)
+		{// チャンクデータの読み込み
+			hr = HRESULT_FROM_WIN32(GetLastError());
+		}
+
+		switch (dwChunkType)
+		{
+		case 'FFIR':
+			dwRIFFDataSize = dwChunkDataSize;
+			dwChunkDataSize = 4;
+			if (ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, nullptr) == 0)
+			{// ファイルタイプの読み込み
+				hr = HRESULT_FROM_WIN32(GetLastError());
+			}
+			break;
+
+		default:
+			if (SetFilePointer(hFile, dwChunkDataSize, nullptr, FILE_CURRENT) == INVALID_SET_FILE_POINTER)
+			{// ファイルポインタをチャンクデータ分移動
+				return HRESULT_FROM_WIN32(GetLastError());
+			}
+		}
+
+		dwOffset += sizeof(DWORD) * 2;
+		if (dwChunkType == format)
+		{
+			*pChunkSize = dwChunkDataSize;
+			*pChunkDataPosition = dwOffset;
+
+			return S_OK;
+		}
+
+		dwOffset += dwChunkDataSize;
+		if (dwBytesRead >= dwRIFFDataSize)
+		{
+			return S_FALSE;
+		}
+	}
+
+	return S_OK;
+}
+
+//--------------------------------------
+//一塊の読み取り
+//--------------------------------------
+HRESULT CSoundManager::ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset)
+{
+	DWORD dwRead;
+
+	if (SetFilePointer(hFile, dwBufferoffset, nullptr, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+	{// ファイルポインタを指定位置まで移動
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+	if (ReadFile(hFile, pBuffer, dwBuffersize, &dwRead, nullptr) == 0)
+	{// データの読み込み
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+	return S_OK;
 }
