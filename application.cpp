@@ -53,7 +53,7 @@ HRESULT CApplication::Init(HINSTANCE hInctance, HWND hWnd, bool bWindow)
 
 	m_pInput->Initkeyboard(hInctance,hWnd);
 
-	m_pSoundManager->Init();
+	m_pSoundManager->Init(hWnd);
 
 	return S_OK;
 }

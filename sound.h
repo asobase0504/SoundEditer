@@ -10,7 +10,12 @@
 //--------------------------------------
 //インクルードファイル
 //--------------------------------------
-#include <Windows.h>
+#include"d3dx9.h"
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
+#include "xaudio2.h"
+#include <map>
 
 //--------------------------------------
 //クラス定義
@@ -19,7 +24,7 @@
 class CSound
 {
 public:
-	/*struct PARAM
+	struct PARAM
 	{//サウンドパラメーターの構造体
 		char *m_pFilename;	// ファイル名
 		int m_nCntLoop;		// ループカウント
@@ -43,25 +48,40 @@ public:
 		SOUND_SE_HIT,						// SE2
 		SOUND_SE_SHOT,						// SE3
 		SOUND_MAX,
-	};*/
+	};
 
 	CSound();											// コンストラクタ
 	~CSound();											// デストラクタ
-	HRESULT Init();										// 初期化
+	HRESULT Init(HWND hWnd);							// 初期化
 	void Uninit();										// 終了
-	void volUp(float Up);							// プログラム上で作用する用の音量の上げ変数
-	void volDown(float Down);						// プログラムで作用する用の音量の下げ変数
-	void PitchUp(float rateUp);						// プログラム上で作用する音階上げ用の変数
-	void PitchDown(float rateDown);					// プログラム上で作用する音階下げ用の変数
-	void Setvol(float vol) { fvol = vol; };				// 音量上げ
-	void SetPitch(float rate) { frate = rate; };		// ピッチを上げつつ音階を上げる
-
-	float Getvol() { return fvol; };
-	float Getrate() { return frate; };
+	HRESULT Play(std::string inName);					// 再生
+	HRESULT Play(SOUND_TYPE type);						// 再生
+	void SetVolume(SOUND_TYPE type, float fVolume);		// 音量
+	void SetRate(SOUND_TYPE type, float rate);			// ピッチ操作
+	void Stop(SOUND_TYPE type);							// 一部停止
+	void Stop();										// 全停止
 
 private:
-	float fvol;
-	float frate;
+	HRESULT CheckChunk(HANDLE hFile,					//一塊(チャンク)の確認
+					   DWORD format, 
+					   DWORD *pChunkSize, 
+					   DWORD *pChunkDataPosition);
+
+
+	HRESULT ReadChunkData(HANDLE hFile,					//一塊(チャンク)の読み込み
+						  void *pBuffer, 
+						  DWORD dwBuffersize, 
+						  DWORD dwBufferoffset);
+
+private:
+
+private:
+	IXAudio2 *m_pXAudio2;								// XAudio2オブジェクトへのインターフェイス
+	IXAudio2MasteringVoice *m_pMasteringVoice;			// マスターボイス
+	IXAudio2SourceVoice *m_apSourceVoice[SOUND_MAX];	// ソースボイス
+	BYTE *m_apDataAudio[SOUND_MAX];						// オーディオデータ
+	DWORD m_aSizeAudio[SOUND_MAX];						// オーディオデータサイズ
+	int m_nCountFade;									// フェード用カウンター
 };
 
 #endif // !_SOUND_H_
