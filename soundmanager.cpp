@@ -4,20 +4,19 @@
 //Author::TAKANO
 //
 //------------------------------------------------------------------------------
-
 //--------------------------------------
 //インクルードファイル
 //--------------------------------------
 #include "application.h"
-#include "input.h"
 #include <assert.h>
 #include "soundmanager.h"
 #include "sound.h"
-#include <fstream>
+
+// ファイル管理
 #include "nlohmann/json.hpp"
+#include <fstream>
 #include "letter.h"
 #include "file.h"
-#include <unordered_map>
 
 //--------------------------------------
 //定数定義
@@ -34,11 +33,10 @@ CSoundManager::CSoundManager()
 {
 	m_pXAudio2 = nullptr;				// XAudio2オブジェクトへのインターフェイス
 	m_pMasteringVoice = nullptr;		// マスターボイス
-	m_apSourceVoice[SOUND_MAX] = {};	// ソースボイス
-	m_apDataAudio[SOUND_MAX] = {};		// オーディオデータ
-	m_aSizeAudio[SOUND_MAX] = {};		// オーディオデータサイズ
+	m_apSourceVoice.clear();			// ソースボイス
+	m_apDataAudio.clear();				// オーディオデータ
+	m_aSizeAudio.clear();				// オーディオデータサイズ
 
-	m_Switch = 0;
 	m_nCount = 0;
 	m_Fade_Ok = false;
 	m_Fadetype = TYPE_NONE;
@@ -52,20 +50,27 @@ CSoundManager::~CSoundManager()
 }
 
 //--------------------------------------
-//初期化
+// 作成
 //--------------------------------------
-//--------------------------------------
-CSound * CSoundManager::SoundCreate(SOUND_TYPE type)
+CSound * CSoundManager::SoundCreate(std::string inName)
 {
-	if (m_pSound[type] != nullptr)
+	return SoundCreate(m_pathName[inName]);
+}
+
+//--------------------------------------
+// 作成
+//--------------------------------------
+CSound * CSoundManager::SoundCreate(int inName)
+{
+	if (m_pSound[inName] != nullptr)
 	{
 		Init();
-		m_pSound[type] = new CSound;
+		m_pSound[inName] = new CSound;
 		LoadPath();
-		m_pSound[type]->Init();
+		m_pSound[inName]->Init();
 	}
 
-	return m_pSound[type];
+	return m_pSound[inName];
 }
 
 //--------------------------------------
@@ -84,16 +89,19 @@ CSoundManager * CSoundManager::ManagerCreate()
 }
 
 //--------------------------------------
-//更新　　以下概要
-//機能としてあるものをサンプルとして
+// 初期化
+// 概要：機能としてあるものをサンプルとして
+//--------------------------------------
 HRESULT CSoundManager::Init()
 {
-	m_Switch = 0;		//セレクト時に使用する変数の初期化
-	LoadPath();			//音程の読込
-//確認可能
-	HRESULT hr;			//HRESULT型の変数
-//--------------------------------------
+	LoadPath();		//音程の読込
+
+	//確認可能
+	HRESULT hr;		//HRESULT型の変数
+
+	//--------------------------------------
 	// COMライブラリの初期化
+	//--------------------------------------
 	CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
 	// XAudio2オブジェクトの作成
@@ -129,10 +137,10 @@ HRESULT CSoundManager::Init()
 		return E_FAIL;
 	}
 
-	CSoundManager* manager = CApplication::GetSoundManager();
+	/*サウンドデータサウンドに持たせることを目標に*/
 
 	// サウンドデータの初期化
-	for (int nCntSound = 0; nCntSound < SOUND_MAX; nCntSound++)
+	for (int nCntSound = 0; nCntSound < (int)m_path.size(); nCntSound++)
 	{
 		HANDLE hFile;
 		DWORD dwChunkSize = 0;
@@ -146,7 +154,7 @@ HRESULT CSoundManager::Init()
 		memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
 
 		// サウンドデータファイルの生成
-		hFile = CreateFile((LPCSTR)manager->GetPath(nCntSound).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+		hFile = CreateFile((LPCSTR)GetPath(nCntSound).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
 		if (hFile == INVALID_HANDLE_VALUE)
 		{
 			//プログラムを緊急で止める
@@ -232,7 +240,7 @@ HRESULT CSoundManager::Init()
 		buffer.AudioBytes = m_aSizeAudio[nCntSound];
 		buffer.pAudioData = m_apDataAudio[nCntSound];
 		buffer.Flags = XAUDIO2_END_OF_STREAM;
-		buffer.LoopCount = manager->GetLoop(nCntSound);
+		buffer.LoopCount = GetLoop(nCntSound);
 
 		// オーディオバッファの登録
 		m_apSourceVoice[nCntSound]->SubmitSourceBuffer(&buffer);
@@ -242,84 +250,60 @@ HRESULT CSoundManager::Init()
 }
 
 //--------------------------------------
-//更新　　以下概要
-//機能としてあるものをサンプルとして
-//確認可能
+//終了
+//--------------------------------------
+void CSoundManager::Uninit()
+{
+	// 一時停止
+	for (int nCntSound = 0; nCntSound < (int)m_apSourceVoice.size(); nCntSound++)
+	{
+		if (m_apSourceVoice[nCntSound])
+		{
+			// 一時停止
+			m_apSourceVoice[nCntSound]->Stop(0);
+
+			// ソースボイスの破棄
+			m_apSourceVoice[nCntSound]->DestroyVoice();
+			m_apSourceVoice[nCntSound] = nullptr;
+
+			// オーディオデータの開放
+			free(m_apDataAudio[nCntSound]);
+			m_apDataAudio[nCntSound] = nullptr;
+		}
+	}
+
+	// マスターボイスの破棄
+	m_pMasteringVoice->DestroyVoice();
+	m_pMasteringVoice = nullptr;
+
+	if (m_pXAudio2)
+	{
+		// XAudio2オブジェクトの開放
+		m_pXAudio2->Release();
+		m_pXAudio2 = nullptr;
+	}
+
+	// COMライブラリの終了処理
+	CoUninitialize();
+}
+
+//--------------------------------------
+// 更新
+// 概要:機能としてあるものをサンプルとして確認可能
 //--------------------------------------
 void CSoundManager::Update()
 {
-	//曲替え
-	ChangeSound();
-
 	//音量変更
-	SoundVolume(m_type);
+	//SoundVolume(m_type);
 
 	//サウンドフェードイン
-	FadeInSound(m_type);
+	//FadeInSound(m_type);
 
 	//サウンドフェードアウト
-	FadeOutSound(m_type);
+	//FadeOutSound(m_type);
 
 	//ピッチ操作
-	ShiftRate(m_type);
-
-	//サウンドのパラメーター保存
-	SoundParameter();
-}
-
-//--------------------------------------
-//音楽使用管理
-//--------------------------------------
-HRESULT CSoundManager::Play(SOUND_TYPE type)
-{
-	XAUDIO2_VOICE_STATE xa2state;
-	XAUDIO2_BUFFER buffer;
-
-	// バッファの値設定
-	memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
-	buffer.AudioBytes = m_aSizeAudio[type];
-	buffer.pAudioData = m_apDataAudio[type];
-	buffer.Flags = XAUDIO2_END_OF_STREAM;
-	buffer.LoopCount = m_path[type].isLoop;
-
-	// 状態取得
-	m_apSourceVoice[type]->GetState(&xa2state);
-	if (xa2state.BuffersQueued != 0)
-	{// 再生中
-	 // 一時停止
-		m_apSourceVoice[type]->Stop(0);
-
-		// オーディオバッファの削除
-		m_apSourceVoice[type]->FlushSourceBuffers();
-	}
-
-	// オーディオバッファの登録
-	m_apSourceVoice[type]->SubmitSourceBuffer(&buffer);
-
-	// 再生
-	m_apSourceVoice[type]->Start(0);
-
-	return S_OK;
-}
-
-
-//--------------------------------------
-//サウンド停止
-//--------------------------------------
-void CSoundManager::Stop(SOUND_TYPE type)
-{
-	XAUDIO2_VOICE_STATE xa2state;
-
-	// 状態取得
-	m_apSourceVoice[type]->GetState(&xa2state);
-	if (xa2state.BuffersQueued != 0)
-	{// 再生中
-	 // 一時停止
-		m_apSourceVoice[type]->Stop(0);
-
-		// オーディオバッファの削除
-		m_apSourceVoice[type]->FlushSourceBuffers();
-	}
+	//ShiftRate(m_type);
 }
 
 //--------------------------------------
@@ -327,70 +311,62 @@ void CSoundManager::Stop(SOUND_TYPE type)
 //--------------------------------------
 void CSoundManager::Stop()
 {
-	// 一時停止
-	for (int nCntSound = 0; nCntSound < SOUND_MAX; nCntSound++)
+	for (int nCntSound = 0; nCntSound < (int)m_pSound.size(); nCntSound++)
 	{
-		if (m_apSourceVoice[nCntSound])
+		if (m_pSound[nCntSound]->GetSourceVoice() == nullptr)
 		{
-			// 一時停止
-			m_apSourceVoice[nCntSound]->Stop(0);
+			continue;
 		}
+
+		// 一時停止
+		m_pSound[nCntSound]->GetSourceVoice()->Stop(0);
 	}
 }
 
 //--------------------------------------
-//音楽使用管理
+// 音量の設定
 //--------------------------------------
-void CSoundManager::ChangeSound()
+void CSoundManager::SetVolume(std::string type, float fVolume)
 {
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_L))
-	{ //曲の入れ替え
-
-		m_Switch = (m_Switch + 1) % 12;
-
-		Select();
-
-		if (m_Switch >= 11)
-		{
-			m_Switch = 0;
-		}
-	}
+	SetVolume(m_pathName[type], fVolume);
 }
 
 //--------------------------------------
-//音量管理
+// 音量の設定
 //--------------------------------------
-void CSoundManager::SoundVolume(SOUND_TYPE type)
+void CSoundManager::SetVolume(int type, float fVolume)
 {
-	if (CApplication::GetInput()->GetkeyboardPress(DIK_UP))
-	{
-		m_pSound[type]->volUp(UP_DOWN_TRACK);
-		SetVolume(m_type, m_pSound[type]->Getvol());
-	}
-
-	if (CApplication::GetInput()->GetkeyboardPress(DIK_DOWN))
-	{
-		m_pSound[type]->volDown(UP_DOWN_TRACK);
-		SetVolume(m_type, m_pSound[type]->Getvol());
-	}
-
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_LEFT))
-	{
-		m_Fadetype = TYPE_IN;
-		m_Fade_Ok = false;
-	}
-
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_RIGHT))
-	{
-		m_Fadetype = TYPE_OUT;
-		m_Fade_Ok = false;
-	}
+	m_pSound[type]->GetSourceVoice()->SetVolume(fVolume);
 }
 
 //--------------------------------------
-//サウンドフェードイン
+// ピッチの設定
 //--------------------------------------
-void CSoundManager::FadeInSound(SOUND_TYPE type)
+void CSoundManager::SetRate(std::string type, float rate)
+{
+	SetRate(m_pathName[type], rate);
+}
+
+//--------------------------------------
+// ピッチの設定
+//--------------------------------------
+void CSoundManager::SetRate(int type, float rate)
+{
+	m_apSourceVoice[type]->SetFrequencyRatio(rate);
+}
+
+//--------------------------------------
+// フェードイン
+//--------------------------------------
+void CSoundManager::FadeInSound(std::string type)
+{
+	FadeInSound(m_pathName[type]);
+}
+
+//--------------------------------------
+// フェードイン
+//--------------------------------------
+void CSoundManager::FadeInSound(int type)
 {
 	if (m_pSound[type]->Getvol() <= 1.0f &&
 		!m_Fade_Ok &&
@@ -410,9 +386,17 @@ void CSoundManager::FadeInSound(SOUND_TYPE type)
 }
 
 //--------------------------------------
-//サウンドフェードアウト
+// フェードアウト
 //--------------------------------------
-void CSoundManager::FadeOutSound(SOUND_TYPE type)
+void CSoundManager::FadeOutSound(std::string type)
+{
+	FadeOutSound(m_pathName[type]);
+}
+
+//--------------------------------------
+// フェードアウト
+//--------------------------------------
+void CSoundManager::FadeOutSound(int type)
 {
 	if (m_pSound[type]->Getvol() >= 0.0f &&
 		!m_Fade_Ok &&
@@ -428,24 +412,6 @@ void CSoundManager::FadeOutSound(SOUND_TYPE type)
 			m_Fade_Ok = true;
 			m_Fadetype = TYPE_NONE;
 		}
-	}
-}
-
-//--------------------------------------
-//ピッチ操作
-//--------------------------------------
-void CSoundManager::ShiftRate(SOUND_TYPE type)
-{
-	if (CApplication::GetInput()->GetkeyboardPress(DIK_O))
-	{
-		m_pSound[type]->PitchUp(TRACK_PITH);
-		SetRate(m_type, m_pSound[type]->Getrate());
-	}
-
-	if (CApplication::GetInput()->GetkeyboardPress(DIK_P))
-	{
-		m_pSound[type]->PitchDown(TRACK_PITH);
-		SetRate(m_type, m_pSound[type]->Getrate());
 	}
 }
 
@@ -510,148 +476,102 @@ void CSoundManager::Load()
 }
 
 //--------------------------------------
-//サウンドセーブ
+// セーブ
 //--------------------------------------
 void CSoundManager::Save()
 {
 	nlohmann::json Savefile;
 
-	Savefile["VOLUME"] = m_volume;
-	Savefile["PITCH"] = m_frate;
-	Savefile["SOUND_TYPE"] = m_type;
-	Savefile["SOUND_NUM"] = m_Switch;
+	//Savefile["VOLUME"] = m_volume;
+	//Savefile["PITCH"] = m_frate;
+	//Savefile["SOUND_TYPE"] = m_type;
+	//Savefile["SOUND_NUM"] = m_Switch;
 
 	SaveJson(Savefile, "Data/JSON/SoundData.json");
 }
 
 //--------------------------------------
-//サウンドセーブ
+// 再生
 //--------------------------------------
-void CSoundManager::SoundParameter()
+HRESULT CSoundManager::Play(std::string inName)
 {
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_N))
-	{
-		Save();
-	}
-
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_M))
-	{
-		Load();
-	}
+	return Play(m_pathName[inName]);
 }
 
 //--------------------------------------
-//サウンド選択
+// 再生
 //--------------------------------------
-void CSoundManager::Select()
+HRESULT CSoundManager::Play(int inName)
 {
-	switch (m_Switch)
-	{
-	case 0:
+	XAUDIO2_VOICE_STATE xa2state;
+	XAUDIO2_BUFFER buffer;
 
-		/*変更なし*/
+	// バッファの値設定
+	memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
+	buffer.AudioBytes = m_aSizeAudio[inName];
+	buffer.pAudioData = m_apDataAudio[inName];
+	buffer.Flags = XAUDIO2_END_OF_STREAM;
+	buffer.LoopCount = m_path[inName].isLoop;
 
-		break;
+	// 状態取得
+	m_apSourceVoice[inName]->GetState(&xa2state);
+	if (xa2state.BuffersQueued != 0)
+	{// 再生中
+	 // 一時停止
+		m_apSourceVoice[inName]->Stop(0);
 
-	case 1:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_BATTLEBAN);
-		m_type = SOUND_BGM_BATTLEBAN;
-		SoundVolume(m_type);
-		break;
+		// オーディオバッファの削除
+		m_apSourceVoice[inName]->FlushSourceBuffers();
+	}
 
-	case 2:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_LAST_MEETING);
-		m_type = SOUND_BGM_LAST_MEETING;
-		SoundVolume(m_type);
-		break;
+	// オーディオバッファの登録
+	m_apSourceVoice[inName]->SubmitSourceBuffer(&buffer);
 
-	case 3:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_RESULT_BGM);
-		m_type = SOUND_BGM_RESULT_BGM;
-		SoundVolume(m_type);
-		break;
+	// 再生
+	m_apSourceVoice[inName]->Start(0);
 
-	case 4:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_VIRTUAL);
-		m_type = SOUND_BGM_VIRTUAL;
-		SoundVolume(m_type);
-		break;
+	return S_OK;
+}
 
-	case 5:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_BATTLEMEETING_VER_2);
-		m_type = SOUND_BGM_BATTLEMEETING_VER_2;
-		SoundVolume(m_type);
+//--------------------------------------
+//サウンド停止
+//--------------------------------------
+void CSoundManager::Stop(std::string type)
+{
+	Stop(m_pathName[type]);
+}
 
-		break;
+//--------------------------------------
+//サウンド停止
+//--------------------------------------
+void CSoundManager::Stop(int type)
+{
+	XAUDIO2_VOICE_STATE xa2state;
 
-	case 6:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_NO_NAME);
-		m_type = SOUND_BGM_NO_NAME;
-		SoundVolume(m_type);
-		break;
+	// 状態取得
+	m_apSourceVoice[type]->GetState(&xa2state);
+	if (xa2state.BuffersQueued != 0)
+	{// 再生中
+	 // 一時停止
+		m_apSourceVoice[type]->Stop(0);
 
-	case 7:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_CHALLENGE_TO_TOMORROW);
-		m_type = SOUND_BGM_CHALLENGE_TO_TOMORROW;
-		SoundVolume(m_type);
-		break;
-
-	case 8:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_BATTLEMEETING);
-		m_type = SOUND_BGM_BATTLEMEETING;
-		SoundVolume(m_type);
-		break;
-
-	case 9:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_HEART);
-		m_type = SOUND_BGM_HEART;
-		SoundVolume(m_type);
-		break;
-
-	case 10:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_DRUM_VOICE);
-		m_type = SOUND_BGM_DRUM_VOICE;
-		SoundVolume(m_type);
-		break;
-
-	case 11:
-		FadeIn(m_type);
-		CSoundManager::Stop();
-		CSoundManager::Play(SOUND_BGM_RANKING);
-		m_type = SOUND_BGM_RANKING;
-		SoundVolume(m_type);
-		break;
-
-	default:
-		assert(false);
-		break;
+		// オーディオバッファの削除
+		m_apSourceVoice[type]->FlushSourceBuffers();
 	}
 }
 
 //--------------------------------------
 //サウンドアップ
 //--------------------------------------
-void CSoundManager::FadeIn(SOUND_TYPE type)
+void CSoundManager::SetFadeIn(std::string type)
+{
+	SetFadeIn(m_pathName[type]);
+}
+
+//--------------------------------------
+//サウンドアップ
+//--------------------------------------
+void CSoundManager::SetFadeIn(int type)
 {
 	m_pSound[type]->Setvol(0.0f);
 	m_Fadetype = TYPE_IN;
@@ -661,64 +581,10 @@ void CSoundManager::FadeIn(SOUND_TYPE type)
 //--------------------------------------
 //サウンドダウン
 //--------------------------------------
-void CSoundManager::FadeOut(SOUND_TYPE type)
+void CSoundManager::FadeOut()
 {
 	m_Fadetype = TYPE_OUT;
 	m_Fade_Ok = false;
-}
-
-//--------------------------------------
-//終了
-//--------------------------------------
-void CSoundManager::Uninit()
-{
-	// 一時停止
-	for (int nCntSound = 0; nCntSound < SOUND_MAX; nCntSound++)
-	{
-		if (m_apSourceVoice[nCntSound])
-		{
-			// 一時停止
-			m_apSourceVoice[nCntSound]->Stop(0);
-
-			// ソースボイスの破棄
-			m_apSourceVoice[nCntSound]->DestroyVoice();
-			m_apSourceVoice[nCntSound] = nullptr;
-
-			// オーディオデータの開放
-			free(m_apDataAudio[nCntSound]);
-			m_apDataAudio[nCntSound] = nullptr;
-		}
-	}
-
-	// マスターボイスの破棄
-	m_pMasteringVoice->DestroyVoice();
-	m_pMasteringVoice = nullptr;
-
-	if (m_pXAudio2)
-	{
-		// XAudio2オブジェクトの開放
-		m_pXAudio2->Release();
-		m_pXAudio2 = nullptr;
-	}
-
-	// COMライブラリの終了処理
-	CoUninitialize();
-}
-
-//--------------------------------------
-//音量設定
-//--------------------------------------
-void CSoundManager::SetVolume(SOUND_TYPE type, float fVolume)
-{
-	m_apSourceVoice[type]->SetVolume(fVolume);
-}
-
-//--------------------------------------
-//ピッチ操作
-//--------------------------------------
-void CSoundManager::SetRate(SOUND_TYPE type, float rate)
-{
-	m_apSourceVoice[type]->SetFrequencyRatio(rate);
 }
 
 //--------------------------------------
