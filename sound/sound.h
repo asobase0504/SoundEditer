@@ -1,27 +1,28 @@
-//---------------------------------------------------------
+//*****************************************************************************
 //
 //サウンド
 //Author::TAKANO
 //Author::YudaKaito
 //
-//---------------------------------------------------------
+//*****************************************************************************
 #ifndef _SOUND_H_
 #define _SOUND_H_
 
-//--------------------------------------
-//インクルードファイル
-//--------------------------------------
+//=============================================================================
+// include
+//=============================================================================
 #include <Windows.h>
 #include <mfapi.h>
-#include <mfidl.h>
-#include <mfreadwrite.h>
 #include "xaudio2.h"
 
-//--------------------------------------
-// クラス定義
-// 
+/*
 // Objectの派生にして毎フレームUpdateを通して下さい。
-//--------------------------------------
+// Sound用のpriorityがあると管理楽かも
+*/
+
+//=============================================================================
+// クラス定義
+//=============================================================================
 class CSound
 {
 public:
@@ -43,17 +44,16 @@ public:
 	void AddVolume(const float inVolume) { SetVolume(inVolume + m_volume); }
 	float GetVolume() { return m_volume; }
 
+	// ピッチ
 	void SetPitch(const float inPitch);
 	void AddPitch(const float inPitch) { SetPitch(inPitch + m_pitch); }
 	float GetPitch() { return m_pitch; }
 
+	// 音データ
 	void SetSourceVoice(IXAudio2SourceVoice* inVoice) { m_apSourceVoice = inVoice; }
-	IXAudio2SourceVoice* GetSourceVoice() { return m_apSourceVoice; }
 
 private:
 	IXAudio2SourceVoice* m_apSourceVoice;	// ソースボイス
-	BYTE* m_apDataAudio;					// オーディオデータ
-	DWORD m_aSizeAudio;						// オーディオデータサイズ
 
 	float m_volume;
 	float m_pitch;
