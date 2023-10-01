@@ -11,12 +11,17 @@
 //=============================================================================
 // include
 //=============================================================================
-#include "sound.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
 #include "xaudio2.h"
 #include <unordered_map>
+
+//=============================================================================
+// 前方宣言
+//=============================================================================
+class CSound;
+class CSoundDistance;
 
 //=============================================================================
 // クラス定義
@@ -44,6 +49,7 @@ public:
 	void Uninit();		// 終了
 
 	CSound* Play(std::string tag);	// 再生
+	CSoundDistance* PlayDistance(std::string tag,const D3DXVECTOR3& inPos);	// 再生
 
 /* メンバー関数 */
 private:

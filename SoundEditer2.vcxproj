@@ -156,6 +156,7 @@
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="sound\sound.cpp" />
     <ClCompile Include="sound\soundmanager.cpp" />
+    <ClCompile Include="sound\sound_distance.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h" />
@@ -166,6 +167,7 @@
     <ClInclude Include="renderer.h" />
     <ClInclude Include="sound\sound.h" />
     <ClInclude Include="sound\soundmanager.h" />
+    <ClInclude Include="sound\sound_distance.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\JSON\SoundPath.json" />

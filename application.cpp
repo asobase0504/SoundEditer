@@ -12,6 +12,8 @@
 #include "input.h"
 #include "application.h"
 #include "sound\\soundmanager.h"
+#include "sound\\sound.h"
+#include "sound\\sound_distance.h"
 #include <assert.h>
 
 //--------------------------------------
@@ -20,6 +22,8 @@
 CRenderer *CApplication::m_aRenderer;
 CInput* CApplication::m_pInput;
 CSoundManager *CApplication::m_pSoundManager;
+
+static D3DXVECTOR3 s_pos(0.0f, 0.0f, 0.0f);
 
 //--------------------------------------
 //コンストラクタ
@@ -54,8 +58,7 @@ HRESULT CApplication::Init(HINSTANCE hInctance, HWND hWnd, bool bWindow)
 
 	m_pInput->Initkeyboard(hInctance,hWnd);
 
-	m_pSoundManager->Init();
-	m_Switch = 0;	//セレクト時に使用する変数の初期化
+	CSoundDistance::SetListenerPos(&s_pos);
 
 	return S_OK;
 }
@@ -74,8 +77,7 @@ void CApplication::Uninit()
 //--------------------------------------
 void CApplication::Update()
 {
-	static CSound* sound = nullptr;
-
+	static CSoundDistance* sound = nullptr;
 	if (m_aRenderer != nullptr)
 	{//レンダラーのポインタに値が入っていたとき
 		m_aRenderer->Update();			// レンダラーの更新
@@ -88,9 +90,21 @@ void CApplication::Update()
 
 	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_N))
 	{
-		sound = m_pSoundManager->Play("TRUE");
+		sound = m_pSoundManager->PlayDistance("TRUE",D3DXVECTOR3(100.0f,0.0f,0.0f));
+	}
+	if (CApplication::GetInput()->GetkeyboardPress(DIK_N))
+	{
+		sound->Update();
 	}
 
+	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_W))
+	{
+		s_pos.x += 10.0f;
+	}
+	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_S))
+	{
+		s_pos.y -= 10.0f;
+	}
 }
 
 //--------------------------------------

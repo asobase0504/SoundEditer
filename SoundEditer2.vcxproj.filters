@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="ソース ファイル\Sound">
+      <UniqueIdentifier>{0784fd0c-6b7e-4330-bcbc-6e4f1f52d0e6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="application.cpp">
@@ -34,10 +37,13 @@
       <Filter>ソース ファイル</Filter>
     </ClCompile>
     <ClCompile Include="sound\sound.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Sound</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\sound_distance.cpp">
+      <Filter>ソース ファイル\Sound</Filter>
     </ClCompile>
     <ClCompile Include="sound\soundmanager.cpp">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Sound</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -59,11 +65,14 @@
     <ClInclude Include="renderer.h">
       <Filter>ソース ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="sound\sound.h">
-      <Filter>ソース ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="sound\soundmanager.h">
-      <Filter>ソース ファイル</Filter>
+      <Filter>ソース ファイル\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\sound.h">
+      <Filter>ソース ファイル\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\sound_distance.h">
+      <Filter>ソース ファイル\Sound</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

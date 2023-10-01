@@ -12,6 +12,8 @@
 #include <assert.h>
 #include "soundmanager.h"
 #include "sound.h"
+#include "sound_distance.h"
+
 // ファイル管理
 #include <fstream>
 #include "../letter.h"
@@ -137,6 +139,25 @@ CSound* CSoundManager::Play(std::string inTag)
 	sound->Init();
 	sound->SetSourceVoice(sourceVoice);
 	sound->Play();
+
+	return sound;
+}
+
+CSoundDistance * CSoundManager::PlayDistance(std::string inTag, const D3DXVECTOR3& inPos)
+{
+	IXAudio2SourceVoice* sourceVoice;
+
+	HRESULT result = m_pXAudio2->CreateSourceVoice(&sourceVoice, &(m_soundData[inTag].format));
+
+	assert(SUCCEEDED(result));
+
+	// オーディオバッファの登録
+	sourceVoice->SubmitSourceBuffer(&m_soundData[inTag].buffer);
+
+	CSoundDistance* sound = new CSoundDistance;
+	sound->Init();
+	sound->SetSourceVoice(sourceVoice);
+	sound->Play(inPos);
 
 	return sound;
 }
