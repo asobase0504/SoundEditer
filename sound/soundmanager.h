@@ -10,7 +10,7 @@
 //----------------------------------------
 //インクルードファイル
 //----------------------------------------
-#include "sound\\sound.h"
+#include "sound.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>

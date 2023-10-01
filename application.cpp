@@ -11,7 +11,7 @@
 #include "renderer.h"
 #include "input.h"
 #include "application.h"
-#include "soundmanager.h"
+#include "sound\\soundmanager.h"
 #include <assert.h>
 
 //--------------------------------------
@@ -47,7 +47,7 @@ HRESULT CApplication::Init(HINSTANCE hInctance, HWND hWnd, bool bWindow)
 	//動的確保
 	m_aRenderer = new CRenderer;
 	m_pInput = new CInput;
-	m_pSoundManager = new CSoundManager;
+	m_pSoundManager = CSoundManager::GetInstance();
 
 	//初期化
 	m_aRenderer->Init(hWnd, bWindow);
@@ -74,23 +74,23 @@ void CApplication::Uninit()
 //--------------------------------------
 void CApplication::Update()
 {
+	static CSound* sound = nullptr;
+
 	if (m_aRenderer != nullptr)
 	{//レンダラーのポインタに値が入っていたとき
-		m_aRenderer->Update();						//レンダラーの更新
+		m_aRenderer->Update();			// レンダラーの更新
 	}
 
 	if (m_pInput != nullptr)
 	{//キーボードのポインタに値が入っていたとき
-		m_pInput->Updatekeyboard();			//キーボードの更新
+		m_pInput->Updatekeyboard();		// キーボードの更新
 	}
 
-	if (m_pSoundManager != nullptr)
+	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_N))
 	{
-		m_pSoundManager->Update();
+		sound = m_pSoundManager->Play("TRUE");
 	}
 
-	ChangeSound();
-	SoundParameter();
 }
 
 //--------------------------------------
@@ -152,169 +152,4 @@ CInput * CApplication::GetInput()
 CSoundManager * CApplication::GetSoundManager()
 {
 	return m_pSoundManager;
-}
-
-void CApplication::SoundVolume()
-{
-	//if (CApplication::GetInput()->GetkeyboardPress(DIK_UP))
-	//{
-	//	m_pSound[type]->volUp(UP_DOWN_TRACK);
-	//	m_pSoundManager->SetVolume(m_type, m_pSound[type]->Getvol());
-	//}
-
-	//if (CApplication::GetInput()->GetkeyboardPress(DIK_DOWN))
-	//{
-	//	m_pSound[type]->volDown(UP_DOWN_TRACK);
-	//	m_pSoundManager->SetVolume("", m_pSound[type]->Getvol());
-	//}
-
-	//if (CApplication::GetInput()->GetkeyboardTrigger(DIK_LEFT))
-	//{
-	//	m_Fadetype = TYPE_IN;
-	//	m_Fade_Ok = false;
-	//}
-
-	//if (CApplication::GetInput()->GetkeyboardTrigger(DIK_RIGHT))
-	//{
-	//	m_Fadetype = TYPE_OUT;
-	//	m_Fade_Ok = false;
-	//}
-
-	//if (CApplication::GetInput()->GetkeyboardPress(DIK_O))
-	//{
-	//	m_pSound[type]->PitchUp(TRACK_PITH);
-	//	m_pSoundManager->SetRate(m_type, m_pSound[type]->Getrate());
-	//}
-
-	//if (CApplication::GetInput()->GetkeyboardPress(DIK_P))
-	//{
-	//	m_pSound[type]->PitchDown(TRACK_PITH);
-	//	m_pSoundManager->SetRate(m_type, m_pSound[type]->Getrate());
-	//}
-
-}
-
-void CApplication::ShiftRate()
-{
-}
-
-void CApplication::SoundParameter()
-{
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_N))
-	{
-		m_pSoundManager->Save();
-	}
-
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_M))
-	{
-		m_pSoundManager->Load();
-	}
-}
-
-void CApplication::ChangeSound()
-{
-	if (CApplication::GetInput()->GetkeyboardTrigger(DIK_L))
-	{ //曲の入れ替え
-
-		m_Switch = (m_Switch + 1) % 12;
-
-		Select();
-
-		if (m_Switch >= 11)
-		{
-			m_Switch = 0;
-		}
-	}
-}
-
-void CApplication::Select()
-{
-	std::string tag;
-
-	switch (m_Switch)
-	{
-	case 0:
-
-		/*変更なし*/
-
-		break;
-
-	case 1:
-		tag = "BATTLEBAN";
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 2:
-		tag = "LAST_MEETING";
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play("LAST_MEETING");
-		break;
-
-	case 3:
-		tag = "RESULT_BGM";
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 4:
-		tag = "VIRTUAL";
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 5:
-		tag = "BATTLEMEETING_VER_2";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-
-		break;
-
-	case 6:
-		tag = "NO_NAME";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 7:
-		tag = "CHALLENGE_TO_TOMORROW";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 8:
-		tag = "BATTLEMEETING";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 9:
-		tag = "HEART";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 10:
-		tag = "DRUM_VOICE";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	case 11:
-		tag = "RANKING";
-		m_pSoundManager->SetFadeIn(tag);
-		m_pSoundManager->Stop();
-		m_pSoundManager->Play(tag);
-		break;
-
-	default:
-		assert(false);
-		break;
-	}
 }

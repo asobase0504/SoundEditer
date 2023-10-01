@@ -10,8 +10,8 @@
 //--------------------------------------
 #include "application.h"
 #include <assert.h>
-#include "sound\\soundmanager.h"
-#include "sound\\sound.h"
+#include "soundmanager.h"
+#include "sound.h"
 
 // ƒtƒ@ƒCƒ‹ŠÇ—
 #include "nlohmann/json.hpp"

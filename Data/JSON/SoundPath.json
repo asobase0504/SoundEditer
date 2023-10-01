@@ -1,72 +1,82 @@
 {
   "SOUND": [
     {
-      "NAME": "BATTLEBAN",
+      "TAG": "BATTLEBAN",
       "PATH": "Data/BGM/battleban.wav",
       "LOOP": true
     },
     {
-      "NAME": "LAST_MEETING",
+      "TAG": "LAST_MEETING",
       "PATH": "Data/BGM/last_meeting.wav",
       "LOOP": true
     },
     {
-      "NAME": "RESULT_BGM",
+      "TAG": "RESULT_BGM",
       "PATH": "Data/BGM/result_bgm.wav",
       "LOOP": true
     },
     {
-      "NAME": "VIRTUAL",
+      "TAG": "RESULT_BGM",
+      "PATH": "Data/BGM/result_bgm.wav",
+      "LOOP": true
+    },
+    {
+      "TAG": "VIRTUAL",
       "PATH": "Data/BGM/Virtual_mission.wav",
       "LOOP": true
     },
     {
-      "NAME": "BATTLEMEETING_VER_2",
+      "TAG": "BATTLEMEETING_VER_2",
       "PATH": "Data/BGM/battlemeeting_ver_2.wav",
       "LOOP": true
     },
     {
-      "NAME": "NO_NAME",
+      "TAG": "NO_NAME",
       "PATH": "Data/BGM/No_name.wav",
       "LOOP": true
     },
     {
-      "NAME": "CHALLENGE_TO_TOMORROW",
+      "TAG": "CHALLENGE_TO_TOMORROW",
       "PATH": "Data/BGM/challenge_to_tomorrow.wav",
       "LOOP": true
     },
     {
-      "NAME": "BATTLEMEETING",
+      "TAG": "BATTLEMEETING",
       "PATH": "Data/BGM/battlemeeting.wav",
       "LOOP": true
     },
     {
-      "NAME": "HEART",
+      "TAG": "HEART",
       "PATH": "Data/BGM/Heart_sound.wav",
       "LOOP": true
     },
     {
-      "NAME": "DRUM_VOICE",
+      "TAG": "DRUM_VOICE",
       "PATH": "Data/BGM/Drum_Voice.wav",
       "LOOP": true
     },
     {
-      "NAME": "RANKING",
+      "TAG": "RANKING",
       "PATH": "Data/BGM/Ranking.wav",
       "LOOP": true
     },
     {
-      "NAME": "EXPOSION",
+      "TAG": "EXPOSION",
       "PATH": "Data/SE/explosion000.wav",
       "LOOP": true
     },
     {
-      "NAME": "HIT",
+      "TAG": "HIT",
       "PATH": "Data/SE/hit000.wav",
       "LOOP": true
     },
     {
-      "NAME": "SHOT",
+      "TAG": "TRUE",
+      "PATH": "Data/SE/true.wav",
+      "LOOP": false
+    },
+    {
+      "TAG": "SHOT",
       "PATH": "Data/SE/shot000.wav",
       "LOOP": true
     }

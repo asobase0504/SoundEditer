@@ -8,8 +8,8 @@
 //--------------------------------------
 //インクルードファイル
 //--------------------------------------
-#include "sound\\sound.h"
-#include "./application.h"
+#include "sound.h"
+#include "application.h"
 #include "soundmanager.h"
 #include <assert.h>
 
