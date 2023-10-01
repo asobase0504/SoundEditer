@@ -154,8 +154,8 @@
     <ClCompile Include="letter.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer.cpp" />
-    <ClCompile Include="sound.cpp" />
-    <ClCompile Include="soundmanager.cpp" />
+    <ClCompile Include="sound\sound.cpp" />
+    <ClCompile Include="sound\soundmanager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.h" />
@@ -164,8 +164,8 @@
     <ClInclude Include="letter.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="renderer.h" />
-    <ClInclude Include="sound.h" />
-    <ClInclude Include="soundmanager.h" />
+    <ClInclude Include="sound\sound.h" />
+    <ClInclude Include="sound\soundmanager.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\JSON\SoundPath.json" />

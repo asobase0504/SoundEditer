@@ -4,8 +4,8 @@
 //Author::TAKANO
 //
 //---------------------------------------------------------
-#ifndef _SOUND_MANAGER_H
-#define _SOUND_MANAGER_H
+#ifndef _SOUND_MANAGER_H_
+#define _SOUND_MANAGER_H_
 
 //----------------------------------------
 //インクルードファイル

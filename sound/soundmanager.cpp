@@ -8,16 +8,15 @@
 //--------------------------------------
 //インクルードファイル
 //--------------------------------------
-#include "application.h"
+#include "../application.h"
 #include <assert.h>
 #include "soundmanager.h"
 #include "sound.h"
 
 // ファイル管理
-#include "nlohmann/json.hpp"
 #include <fstream>
-#include "letter.h"
-#include "file.h"
+#include "../letter.h"
+#include "../file.h"
 
 //--------------------------------------
 // 静的変数の宣言

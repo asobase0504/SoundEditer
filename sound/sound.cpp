@@ -9,7 +9,7 @@
 //インクルードファイル
 //--------------------------------------
 #include "sound.h"
-#include "application.h"
+#include "../application.h"
 #include "soundmanager.h"
 #include <assert.h>
 
